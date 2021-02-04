@@ -1324,3 +1324,465 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   http://localhost:8080/metrics
   http://localhost:9090/
   ```
+
+### 11 - Implementar Tolerância Falha - MicroProfile Fault Tolerance <a name="workshop-quarkus-fault">
+
+  * Criação possível através do [Quarkus Fault Tolerance](https://quarkus.io/guides/microprofile-fault-tolerance)
+
+  * Incluir *extension SmallRye Fault Tolerance*:
+
+  ```
+  <dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-smallrye-fault-tolerance</artifactId>
+  </dependency>
+  ```
+
+  * Incluir as seguintes propriedades na classe **CustomerResource**:
+
+    ```
+    package br.com.impacta.quarkus;
+
+    import org.eclipse.microprofile.config.inject.ConfigProperty;
+    import org.eclipse.microprofile.metrics.MetricUnits;
+    import org.eclipse.microprofile.metrics.annotation.Gauge;
+    import org.eclipse.microprofile.rest.client.inject.RestClient;
+
+    import javax.inject.Inject;
+    import javax.ws.rs.*;
+    import javax.ws.rs.core.MediaType;
+    import java.util.List;
+    import java.util.logging.Logger;
+
+    @Path("/customers")
+    public class CustomerResource {
+
+      private static final Logger LOGGER = Logger.getLogger(CustomerResource.class.toString());
+
+      @ConfigProperty(name = "isTestingFault")
+      boolean isTestingFault;
+
+      @ConfigProperty(name = "isRetry")
+      boolean isRetry;
+      final int quantidadeRetry = 5;
+      int exceptionCount = quantidadeRetry - 1;
+      int count = 0;
+
+      @ConfigProperty(name = "isFallBack")
+      boolean isFallBack;
+
+      @Inject
+      CustomerService customerService;
+
+      @Inject
+      @RestClient
+      BuscaCEPRestClient buscaCepRestClient;
+
+      @GET
+      @Produces(MediaType.APPLICATION_JSON)
+      //@Retry(maxRetries = quantidadeRetry, delay = 1, delayUnit = ChronoUnit.SECONDS)
+      //@Fallback(fallbackMethod = "fallbackCustomers")
+      public List<Customer> listCustomer(){
+          if (isTestingFault){
+              executeFault();
+          }
+          return customerService.listCustomer();
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/{id}")
+      public Customer getCustomerById(@PathParam("id") Long id){
+          Customer customerEntity = new Customer();
+          customerEntity.id = id;
+          customerEntity = customerService.getCustomerById(customerEntity);
+          return customerEntity;
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/rg/{rg}")
+      public Customer getCustomer(@PathParam("rg") Integer rg){
+          Customer customerEntity = new Customer();
+          customerEntity.setRg(rg);
+          customerEntity = customerService.getCustomerByRg(customerEntity);
+          return customerEntity;
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/primeiroNome/{primeiroNome}")
+      public List<Customer> getCustomerByName(@PathParam("primeiroNome") String name){
+          Customer customerEntity = new Customer();
+          customerEntity.setPrimeiroNome(name);
+          List<Customer> customers = customerService.getByPrimeiroNome(customerEntity);
+          return customers;
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/primeiroNome/{primeiroNome}/sobreNome/{sobreNome}")
+      public List<Customer> getCustomerByNameOrLastName(@PathParam("primeiroNome") String primeiroNome,
+                                                        @PathParam("sobreNome") String sobreNome){
+          Customer customerEntity = new Customer();
+          customerEntity.setPrimeiroNome(primeiroNome);
+          customerEntity.setSobreNome(sobreNome);
+          List<Customer> customers = customerService.getByPrimeiroNomeOrSobreNome(customerEntity);
+          return customers;
+      }
+
+      @POST
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      public Customer addCustomer(Customer customer){
+          customer.setNumeroCep(buscaCepRestClient.getNumeroCEP().getNumeroCep());
+          Customer customerEntity = customerService.addCustomer(customer);
+          return customerEntity;
+      }
+
+      @PUT
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      public Customer updatCustomer(Customer customer){
+          Customer customerEntity = customerService.updateCustomer(customer);
+          return customerEntity;
+      }
+
+      @DELETE
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/rg/{rg}")
+      public Customer deleteCustomerByRg(@PathParam("rg") Integer rg){
+          Customer customerEntity = new Customer();
+          customerEntity.setRg(rg);
+          customerEntity = customerService.getCustomerByRg(customerEntity);
+          customerEntity = customerService.deleteCustomer(customerEntity);
+          return customerEntity;
+      }
+
+      @Gauge(name = "QUARKUS_QUANTIDADE_CLIENTES", unit = MetricUnits.NONE, description = "QUANTIDADE DE CLIENTES")
+      public long checkCustomerAmmout(){
+          return customerService.listCustomer().size();
+      }
+
+    }
+    ```
+
+  * Modificar a classe **CustomerResource** adicionando os seguintes métodos:
+
+    ```
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    //@Retry(maxRetries = quantidadeRetry, delay = 1, delayUnit = ChronoUnit.SECONDS)
+    //@Fallback(fallbackMethod = "fallbackCustomers")
+    public List<Customer> listCustomer(){
+        if (isTestingFault){
+            executeFault();
+        }
+        return customerService.listCustomer();
+    }
+
+    private void executeFault(){
+       if (isRetry){
+           while ( count < exceptionCount){
+               count++;
+               String message = "Simulando Erro: " + count;
+               LOGGER.log(Level.ERROR, message);
+               throw new RuntimeException(message);
+           }
+           count = 0;
+       }
+       if (isFallBack){
+           throw new RuntimeException("Simulando Erro: ");
+       }
+    }
+
+    private List<Customer> fallbackCustomers(){
+        return new ArrayList<Customer>(0);
+    }
+    ```
+
+  * Teste de *Retry*:
+
+    * Inclua as seguintes propriedades no arquivo **application.properties**:
+
+      ```
+      # Teste Fault Tolerance
+      %dev.isTestingFault = true
+      # Retry
+      %dev.isRetry = true
+      # Timeout
+      %dev.isFallBack = false
+      ```
+
+    * Descomente a *Annotation @Retry* do método **listCustomer**
+
+
+    * Inclua alguns *Customers*:
+
+      ```
+      http POST :8080/customers rg=11111 primeiroNome=nome1 sobreNome=sobrenome1;
+      http POST :8080/customers rg=22222 primeiroNome=nome2 sobreNome=sobrenome2;
+      http POST :8080/customers rg=33333 primeiroNome=nome3 sobreNome=sobrenome3;
+      http POST :8080/customers rg=44444 primeiroNome=nome4 sobreNome=sobrenome4
+      ```
+
+    * Faça uma chamada ao método **listCustomer()**
+
+      ```
+      http :8080/customers  
+      ```
+
+    * Verifique que algumas exceções são lançadas porém é obtido um retorno após execução bem sucedida:
+
+      ```
+      2021-02-04 15:59:16,335 ERROR [cla.com.imp.qua.CustomerResource] (executor-thread-199) Simulando Erro: 1
+      2021-02-04 15:59:17,457 ERROR [cla.com.imp.qua.CustomerResource] (executor-thread-199) Simulando Erro: 2
+      2021-02-04 15:59:18,464 ERROR [cla.com.imp.qua.CustomerResource] (executor-thread-199) Simulando Erro: 3
+      2021-02-04 15:59:19,632 ERROR [cla.com.imp.qua.CustomerResource] (executor-thread-199) Simulando Erro: 4
+
+      HTTP/1.1 200 OK
+      Content-Length: 345
+      Content-Type: application/json
+
+      [
+          {
+              "id": 1,
+              "numeroCep": 38646,
+              "primeiroNome": "NOME1",
+              "rg": 11111,
+              "sobreNome": "SOBRENOME1"
+          },
+          {
+              "id": 2,
+              "numeroCep": 93457,
+              "primeiroNome": "NOME2",
+              "rg": 22222,
+              "sobreNome": "SOBRENOME2"
+          },
+          {
+              "id": 3,
+              "numeroCep": 82306,
+              "primeiroNome": "NOME3",
+              "rg": 33333,
+              "sobreNome": "SOBRENOME3"
+          },
+          {
+              "id": 4,
+              "numeroCep": 69182,
+              "primeiroNome": "NOME4",
+              "rg": 44444,
+              "sobreNome": "SOBRENOME4"
+          }
+      ]
+      ```
+
+      * Teste de *Fallback*:
+
+        * Altere as seguintes propriedades no arquivo **application.properties**:
+
+          ```
+          # Teste Fault Tolerance
+          %dev.isTestingFault = true
+          # Retry
+          %dev.isRetry = false
+          # Timeout
+          %dev.isFallBack = true
+          ```
+
+        * Descomente a *Annotation @Fallback* e comente *@Retry* do método **listCustomer**
+
+        * Inclua alguns *Customers*:
+
+          ```
+          http POST :8080/customers rg=11111 primeiroNome=nome1 sobreNome=sobrenome1;
+          http POST :8080/customers rg=22222 primeiroNome=nome2 sobreNome=sobrenome2;
+          http POST :8080/customers rg=33333 primeiroNome=nome3 sobreNome=sobrenome3;
+          http POST :8080/customers rg=44444 primeiroNome=nome4 sobreNome=sobrenome4
+          ```
+
+        * Faça uma chamada ao método **listCustomer()**
+
+          ```
+          http :8080/customers  
+          ```
+
+        * Verifique o retorno da invocação do *Endpoint RestFull* não apresenta erro porém sem dados:
+
+          ```
+          HTTP/1.1 200 OK
+          Content-Length: 2
+          Content-Type: application/json
+
+          []
+          ```
+
+        * Altere as seguintes propriedades no arquivo **application.properties**:
+
+          ```
+          # Teste Fault Tolerance
+          %dev.isTestingFault = false
+          # Retry
+          %dev.isRetry = false
+          # Timeout
+          %dev.isFallBack = false
+          ```
+
+### 12 - Inclusão Monitoramento - MicroProfile Metrics <a name="workshop-quarkus-opentracing">
+
+  * Maiores detalhes em na documentação [OpenTracing](https://quarkus.io/guides/opentracing)
+
+  * Inicializar serviço do *Jaeger*:
+
+    ```
+    docker run -p 5775:5775/udp -p 6831:6831/udp -p 6832:6832/udp -p 5778:5778 -p 16686:16686 -p 14268:14268 jaegertracing/all-in-one:latest
+    ```
+
+    * Incluir *extension SmallRye OpenTracing*:
+
+    ```
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-opentracing</artifactId>
+    </dependency>
+    ```
+
+  * Inclua alguns *Customers*:
+
+    ```
+    http POST :8080/customers rg=11111 primeiroNome=nome1 sobreNome=sobrenome1;
+    http POST :8080/customers rg=22222 primeiroNome=nome2 sobreNome=sobrenome2;
+    http POST :8080/customers rg=33333 primeiroNome=nome3 sobreNome=sobrenome3;
+    http POST :8080/customers rg=44444 primeiroNome=nome4 sobreNome=sobrenome4
+    ```
+
+  * Acesse a interface do *Jaeger* e verifique as rotas:
+
+    ```
+    http://localhost:16686/
+    ```
+
+### 13 - Segurança - Keycloak/OAuth/OIDC/JWT <a name="execute-step-13">
+
+  * Maiores detalhes em na documentação [Quarkus OpenID Connect](https://quarkus.io/guides/security-openid-connect)
+
+  * Inicie o serviço do **Keycloak**
+
+    ```
+    docker run -p 10080:8080 viniciusmartinez/quarkus-rhsso:1.0
+    ```
+
+    * Incluir *extension OpenID Connect*:
+
+    ```
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-oidc</artifactId>
+    </dependency>
+    ```
+
+  * Adicione no arquivo **application.properties** os seguintes parâmetros:
+
+    ```  
+    %dev.quarkus.oidc.auth-server-url = http://localhost:10080/auth/realms/Quarkus
+    %dev.quarkus.oidc.client-id = customer-app
+    %dev.quarkus.oidc.credentials.secret =5ffb3490-4d7b-42ed-8cac-e6774550bc92
+    %dev.quarkus.http.auth.policy.role-policy1.roles-allowed = user,admin                      
+    %dev.quarkus.http.auth.permission.roles1.paths = /*
+    %dev.quarkus.http.auth.permission.roles1.policy = role-policy1
+    ```
+
+  * Tente executar qualquer endpoint e um *HTTP 403* é esperado:
+
+    ```
+    http :8080/customers
+
+    HTTP/1.1 401 Unauthorized
+    content-length: 0
+    ```
+
+  * Obtenha um *Token* com as credenciais do usuário **user1**:
+
+    ```
+    export access_token=$(\
+      curl -X POST http://localhost:10080/auth/realms/Quarkus/protocol/openid-connect/token \
+      --user customer-app:5ffb3490-4d7b-42ed-8cac-e6774550bc92 \
+      -H 'content-type: application/x-www-form-urlencoded' \
+      -d 'username=user1&password=user1&grant_type=password' | jq --raw-output '.access_token' \
+    )
+
+    echo $access_token
+    ```
+
+  * Inclua alguns *Customers*:
+
+    ```
+    http POST :8080/customers rg=11111 primeiroNome=nome1 sobreNome=sobrenome1 "Authorization: Bearer "$access_token;
+    http POST :8080/customers rg=22222 primeiroNome=nome2 sobreNome=sobrenome2 "Authorization: Bearer "$access_token;
+    http POST :8080/customers rg=33333 primeiroNome=nome3 sobreNome=sobrenome3 "Authorization: Bearer "$access_token;
+    http POST :8080/customers rg=44444 primeiroNome=nome4 sobreNome=sobrenome4 "Authorization: Bearer "$access_token
+
+    http :8080/customers "Authorization: Bearer "$access_token
+    ```
+
+  * Modifique o método de *DELETE* adicionando a necessidade de uma *role admin*:
+
+    ```
+    @DELETE
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/rg/{rg}")
+    @RolesAllowed("admin")
+    public Customer deleteCustomerByRg(@PathParam("rg") Integer rg){
+      Customer customerEntity = new Customer();
+      customerEntity.setRg(rg);
+      customerEntity = customerService.getCustomerByRg(customerEntity);
+      customerEntity = customerService.deleteCustomer(customerEntity);
+      return customerEntity;
+    }
+    ```
+
+  * Tente remover qualquer *customer* recém criado. Um erro *403* é esperado:
+
+    ```
+    http DELETE :8080/customers/rg/33333 "Authorization: Bearer "$access_token
+
+    HTTP/1.1 403 Forbidden
+    Content-Length: 9
+    Content-Type: application/json
+
+    Forbidden
+    ```
+
+  * Obtenha um *Token* com as credenciais do usuário **admin**:
+
+    ```
+    export access_token=$(\
+      curl -X POST http://localhost:10080/auth/realms/Quarkus/protocol/openid-connect/token \
+      --user customer-app:5ffb3490-4d7b-42ed-8cac-e6774550bc92 \
+      -H 'content-type: application/x-www-form-urlencoded' \
+      -d 'username=admin&password=admin&grant_type=password' | jq --raw-output '.access_token' \
+    )
+
+    echo $access_token
+    ```
+
+  * Tente remover qualquer *customer* recém criado:
+
+    ```
+    http DELETE :8080/customers/rg/33333 "Authorization: Bearer "$access_token
+    ```
+
+## Referências Adicionais <a name="additional-references">
+
+- [Tutoriais Hands On - developers.redhat.com](https://developers.redhat.com/courses/quarkus/)
+- [Tutoriais Hands On - learn.openshift.com](https://learn.openshift.com/middleware/courses/middleware-quarkus/)
+- [Exemplos & Guias](https://quarkus.io/guides/)
+- [Quarkus Blog](https://quarkus.io/blog/)
+- [Quarkus @ Youtube](https://www.youtube.com/channel/UCaW8QG_QoIk_FnjLgr5eOqg)
+- [Red Hat Developers](https://developers.redhat.com/)
+- [Red Hat Developers @ Youtube](https://www.youtube.com/channel/UC7noUdfWp-ukXUlAsJnSm-Q)

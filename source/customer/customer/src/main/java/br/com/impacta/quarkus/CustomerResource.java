@@ -1,16 +1,38 @@
 package br.com.impacta.quarkus;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.faulttolerance.Fallback;
+import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Gauge;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.jboss.logmanager.Level;
 
+import javax.annotation.security.RolesAllowed;
 import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 @Path("/customers")
 public class CustomerResource {
+
+    private static final Logger LOGGER = Logger.getLogger(CustomerResource.class.toString());
+
+    @ConfigProperty(name = "isTestingFault")
+    boolean isTestingFault;
+
+    @ConfigProperty(name = "isRetry")
+    boolean isRetry;
+    final int quantidadeRetry = 5;
+    int exceptionCount = quantidadeRetry - 1;
+    int count = 0;
+
+    @ConfigProperty(name = "isFallBack")
+    boolean isFallBack;
 
     @Inject
     CustomerService customerService;
@@ -21,7 +43,12 @@ public class CustomerResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    //@Retry(maxRetries = quantidadeRetry, delay = 1, delayUnit = ChronoUnit.SECONDS)
+    @Fallback(fallbackMethod = "fallbackCustomers")
     public List<Customer> listCustomer(){
+        if (isTestingFault){
+            executeFault();
+        }
         return customerService.listCustomer();
     }
 
@@ -92,6 +119,7 @@ public class CustomerResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/rg/{rg}")
+    @RolesAllowed("admin")
     public Customer deleteCustomerByRg(@PathParam("rg") Integer rg){
         Customer customerEntity = new Customer();
         customerEntity.setRg(rg);
@@ -103,6 +131,25 @@ public class CustomerResource {
     @Gauge(name = "QUARKUS_QUANTIDADE_CLIENTES", unit = MetricUnits.NONE, description = "QUANTIDADE DE CLIENTES")
     public long checkCustomerAmmout(){
         return customerService.listCustomer().size();
+    }
+
+    private void executeFault(){
+        if (isRetry){
+            while ( count < exceptionCount){
+                count++;
+                String message = "Simulando Erro: " + count;
+                LOGGER.log(Level.ERROR, message);
+                throw new RuntimeException(message);
+            }
+            count = 0;
+        }
+        if (isFallBack){
+            throw new RuntimeException("Simulando Erro: ");
+        }
+    }
+
+    private List<Customer> fallbackCustomers(){
+        return new ArrayList<Customer>(0);
     }
 
 }
