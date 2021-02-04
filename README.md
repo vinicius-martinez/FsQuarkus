@@ -42,7 +42,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
     RestEasy JAX-RS
   ```
 
-### 1 - Execução do Projeto <a name="#workshop-quarkus-execution">
+### 1 - Execução do Projeto <a name="workshop-quarkus-execution">
 
   Sintaxe: `mvn quarkus:dev`
   ```
@@ -68,7 +68,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   Hello RESTEasy
   ```
 
-### 2 - Geração do Pacote  <a name="#workshop-quarkus-package">
+### 2 - Geração do Pacote  <a name="workshop-quarkus-package">
 
   * Geração de Pacote:
 
@@ -96,7 +96,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
     * caso necessite criar um *uber-jar*, basta adicionar as seguintes properties no arquivo *application.properties*. Maiores detalhes nesses links: [MAVEN](https://quarkus.io/guides/maven-tooling#uber-jar-maven) [GRADLE](https://quarkus.io/guides/gradle-tooling#building-uber-jars)
 
 
-### 3 - Compilações Quarkus <a name="#workshop-quarkus-compile">
+### 3 - Compilações Quarkus <a name="workshop-quarkus-compile">
 
   * Maiores detalhes sobre esses processos estão disponíveis nesses links: [Native Image](https://quarkus.io/guides/building-native-image) [Container Image](https://quarkus.io/guides/container-image)
 
@@ -146,7 +146,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   ab -n 50000 -c 10 http://localhost:8280/hello
   ```
 
-### 4 - Restfull WebServices <a name="#workshop-quarkus-restfull">
+### 4 - Restfull WebServices <a name="workshop-quarkus-restfull">
 
   * Criação possível através do [Quarkus Initializer](https://code.quarkus.io/)
 
@@ -253,7 +253,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 	}
   ```
 
-### 5 - Adicionar suporte a JSON-B <a name="#workshop-quarkus-jsonb">
+### 5 - Adicionar suporte a JSON-B <a name="workshop-quarkus-jsonb">
 
   * Maiores detalhes em na documentação [JSON-B](https://quarkus.io/guides/rest-json#configuring-json-support)
 
@@ -329,7 +329,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   }
   ```
 
-### 6 - Criação da Camada de Service - Dependency Injection <a name="#workshop-quarkus-di">
+### 6 - Criação da Camada de Service - Dependency Injection <a name="workshop-quarkus-di">
 
   * Referência do suporte a [CDI](https://quarkus.io/guides/cdi-reference) pelo **Quarkus**
 
@@ -832,7 +832,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   http :8080/customers/primeiroNome/ahuahuhs/sobreNome/sobrenomeB
   ```
 
-### 9 - Inclusão BuscaCEP - MicroProfile Rest Client <a name="#workshop-quarkus-restclient">
+### 9 - Inclusão BuscaCEP - MicroProfile Rest Client <a name="workshop-quarkus-restclient">
 
   * Criação possível através do [Quarkus Initializer](https://code.quarkus.io/)
 
@@ -1153,3 +1153,174 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 
     http :8080/customers
     ```
+
+### 10 - Inclusão Monitoramento - MicroProfile Metrics <a name="workshop-quarkus-metrics">
+
+  * Maiores detalhes em na documentação [Quarkus MicroProfile Metrics](https://quarkus.io/guides/microprofile-metrics)
+
+  * Incluir *extension SmallRye Metrics*:
+
+  ```
+  <dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-smallrye-metrics</artifactId>
+  </dependency>
+  ```
+
+  * Ajustar configuração do *Prometheus* com os seguintes atributos:
+
+  ```
+  global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+  rule_files:
+
+  scrape_configs:
+    - job_name: 'prometheus'
+      static_configs:
+        - targets: ['localhost:9090']
+
+    - job_name: 'quarkus'
+      static_configs:
+        - targets: ['localhost:8080']
+
+    - job_name: 'quarkus2'
+      static_configs:
+        - targets: ['localhost:8180']
+
+  ./prometheus --config.file=prometheus-fsquarkus.yml
+
+  http://localhost:8080/metrics
+  http://localhost:9090/graph
+  ```
+
+  * Modificar a classe **CustomerResource** adicionando os seguintes métodos:
+
+  ```
+  package br.com.impacta.quarkus;
+
+  import org.eclipse.microprofile.metrics.MetricUnits;
+  import org.eclipse.microprofile.metrics.annotation.Gauge;
+  import org.eclipse.microprofile.rest.client.inject.RestClient;
+
+  import javax.inject.Inject;
+  import javax.ws.rs.*;
+  import javax.ws.rs.core.MediaType;
+  import java.util.List;
+
+  @Path("/customers")
+  public class CustomerResource {
+
+      @Inject
+      CustomerService customerService;
+
+      @Inject
+      @RestClient
+      BuscaCEPRestClient buscaCepRestClient;
+
+      @GET
+      @Produces(MediaType.APPLICATION_JSON)
+      public List<Customer> listCustomer(){
+          return customerService.listCustomer();
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/{id}")
+      public Customer getCustomerById(@PathParam("id") Long id){
+          Customer customerEntity = new Customer();
+          customerEntity.id = id;
+          customerEntity = customerService.getCustomerById(customerEntity);
+          return customerEntity;
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/rg/{rg}")
+      public Customer getCustomer(@PathParam("rg") Integer rg){
+          Customer customerEntity = new Customer();
+          customerEntity.setRg(rg);
+          customerEntity = customerService.getCustomerByRg(customerEntity);
+          return customerEntity;
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/primeiroNome/{primeiroNome}")
+      public List<Customer> getCustomerByName(@PathParam("primeiroNome") String name){
+          Customer customerEntity = new Customer();
+          customerEntity.setPrimeiroNome(name);
+          List<Customer> customers = customerService.getByPrimeiroNome(customerEntity);
+          return customers;
+      }
+
+      @GET
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/primeiroNome/{primeiroNome}/sobreNome/{sobreNome}")
+      public List<Customer> getCustomerByNameOrLastName(@PathParam("primeiroNome") String primeiroNome,
+                                                        @PathParam("sobreNome") String sobreNome){
+          Customer customerEntity = new Customer();
+          customerEntity.setPrimeiroNome(primeiroNome);
+          customerEntity.setSobreNome(sobreNome);
+          List<Customer> customers = customerService.getByPrimeiroNomeOrSobreNome(customerEntity);
+          return customers;
+      }
+
+      @POST
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      public Customer addCustomer(Customer customer){
+          customer.setNumeroCep(buscaCepRestClient.getNumeroCEP().getNumeroCep());
+          Customer customerEntity = customerService.addCustomer(customer);
+          return customerEntity;
+      }
+
+      @PUT
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      public Customer updatCustomer(Customer customer){
+          Customer customerEntity = customerService.updateCustomer(customer);
+          return customerEntity;
+      }
+
+      @DELETE
+      @Consumes(MediaType.APPLICATION_JSON)
+      @Produces(MediaType.APPLICATION_JSON)
+      @Path("/rg/{rg}")
+      public Customer deleteCustomerByRg(@PathParam("rg") Integer rg){
+          Customer customerEntity = new Customer();
+          customerEntity.setRg(rg);
+          customerEntity = customerService.getCustomerByRg(customerEntity);
+          customerEntity = customerService.deleteCustomer(customerEntity);
+          return customerEntity;
+      }
+
+      @Gauge(name = "QUARKUS_QUANTIDADE_CLIENTES", unit = MetricUnits.NONE, description = "QUANTIDADE DE CLIENTES")
+      public long checkCustomerAmmout(){
+          return customerService.listCustomer().size();
+      }
+
+  }
+  ```
+
+* Adicionar alguns *customers*:
+
+  ```
+  http POST :8080/customers rg=11111 primeiroNome=nome1 sobreNome=sobrenome1;
+  http POST :8080/customers rg=22222 primeiroNome=nome2 sobreNome=sobrenome2;
+  http POST :8080/customers rg=33333 primeiroNome=nome3 sobreNome=sobrenome3;
+  http POST :8080/customers rg=44444 primeiroNome=nome4 sobreNome=sobrenome4
+  ```
+
+* Verificar nos *Endpoints* de monitoramento a inclusão da métrica **QUARKUS_QUANTIDADE_CLIENTES**
+
+  ```
+  application_br_com_redhat_quarkus_CustomerResource_QUARKUS_QUANTIDADE_CLIENTES
+  http://localhost:8080/metrics
+  http://localhost:9090/
+  ```
