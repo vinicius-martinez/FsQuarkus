@@ -4,7 +4,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 
 ## Pré Requisitos
 
-- [JDK/Open JDK 1.8 (no mínimo)](https://openjdk.java.net/install/)
+- [JDK/Open JDK 11](https://openjdk.java.net/install/)
 - [Apache Maven](https://maven.apache.org/download.cgi)
 - [GraalVM](https://www.graalvm.org/docs/release-notes/19_3/)
 - [HTTPie](https://httpie.org/)
@@ -38,8 +38,6 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   Group: br.com.impacta.quarkus
   Artifact code-with-quarkus
   Build Tool: maven
-  Selected Extensions:
-    RestEasy JAX-RS
   ```
 
 ### 1 - Execução do Projeto <a name="workshop-quarkus-execution">
@@ -161,7 +159,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Inicialização da aplicação em *dev mode*:
 
   ```
-  ./mvnw compile quarkus:dev
+  ./mvnw quarkus:dev
   ```
     * maiores detalhem em [Development Mode](https://quarkus.io/guides/getting-started#development-mode)
 
