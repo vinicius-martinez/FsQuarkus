@@ -71,7 +71,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Geração de Pacote:
 
   ```
-  ./mvnw package -DskipTest
+  ./mvnw package -DskipTests
   ```
 
   * Certifique-se que a aplicação foi compilada com sucesso, e após esse processo, inicialize a mesma:
