@@ -255,6 +255,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 			return false;
 		return true;
 	}
+   }
   ```
 
 ### 5 - Adicionar suporte a JSON-B <a name="workshop-quarkus-jsonb">
