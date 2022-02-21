@@ -157,8 +157,8 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   Group: br.com.impacta.quarkus
   Artifact customer
   Build Tool: maven
-  Selected Extensions:
-    RestEasy JAX-RS
+  Extensions:
+    RESTEasy JAX-RS [quarkus-resteasy]
   ```
 
   * Inicialização da aplicação em *dev mode*:
@@ -166,8 +166,8 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   ```
   ./mvnw quarkus:dev
   ```
-  
-    * maiores detalhem em [Development Mode](https://quarkus.io/guides/getting-started#development-mode)
+
+  * maiores detalhem em [Development Mode](https://quarkus.io/guides/getting-started#development-mode)
 
   * Executar o teste no *Endpoint*:
 
