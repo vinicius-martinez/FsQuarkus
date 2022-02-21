@@ -163,11 +163,11 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 
   * Inicialização da aplicação em *dev mode*:
 
+    * maiores detalhem em [Development Mode](https://quarkus.io/guides/getting-started#development-mode)
+
   ```
   ./mvnw quarkus:dev
   ```
-
-  * maiores detalhem em [Development Mode](https://quarkus.io/guides/getting-started#development-mode)
 
   * Executar o teste no *Endpoint*:
 
