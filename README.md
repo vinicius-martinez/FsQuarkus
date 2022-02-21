@@ -23,7 +23,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 7. [Adicionar suporte a OpenAPI/Swagger](#workshop-quarkus-openapi)
 8. [Inclusão Persistência - Hibernate Panache](#workshop-quarkus-panache)
 9. [Inclusão BuscaCEP - MicroProfile Rest Client](#workshop-quarkus-restclient)
-10. [Inclusão Monitoramento - MicroProfile Metrics](#workshop-quarkus-metrics)
+10. [Inclusão Monitoramento - Micrometer Metrics](#workshop-quarkus-metrics)
 11. [Implementar Tolerância Falha - MicroProfile Fault Tolerance](#workshop-quarkus-fault)
 12. [Implementar APM - OpenTracing](#workshop-quarkus-opentracing)
 13. [Segurança - Keycloak/OAuth/OIDC/JWT](#workshop-quarkus-security)
@@ -172,7 +172,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Executar o teste no *Endpoint*:
 
   ```
-  http :8080/hello-resteasy
+  http :8080/hello
   HTTP/1.1 200 OK
   Content-Length: 14
   Content-Type: text/plain;charset=UTF-8
@@ -260,18 +260,6 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 ### 5 - Adicionar suporte a JSON-B <a name="workshop-quarkus-jsonb">
 
   * Maiores detalhes em na documentação [JSON-B](https://quarkus.io/guides/rest-json#configuring-json-support)
-
-  * Modificar o *Restfull WebService* para retornar a entidade *Customer*:
-
-  ```
-  public Customer hello() {
-    Customer customer = new Customer();
-    customer.setPrimeiroNome("nome1");
-    customer.setSobreNome("sobreNome1");
-    customer.setRg(101010);
-    return customer;
-  }
-  ```
 
   * Criar a classe **CustomerResource** com o seguinte conteúdo:
 
@@ -501,7 +489,8 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Acessar *Swagger UI* ou *OpenAPI Endpoint*:
 
   ```
-  http://localhost:8080/swagger-ui/
+  http://localhost:8080
+  http://localhost:8080/q/swagger-ui/
   http :8080/openapi
   ```
 
@@ -538,8 +527,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Acessar *Swagger UI* ou *OpenAPI Endpoint*:
 
   ```
-  http://localhost:8080/swagger-ui/
-  http :8080/openapi
+  http://localhost:8080/q/swagger-ui/
   ```
 
 ### 8 - Inclusão Persistência - Hibernate Panache <a name="workshop-quarkus-panache">
@@ -564,7 +552,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   ```
   docker run -e "POSTGRES_PASSWORD=postgres" -p 5432:5432 -d postgres:9.6.18-alpine
   ```
-    * posterior a essa etapa crie o banco de dados "customers"
+    * posterior a essa etapa crie o banco de dados **customers**
 
 
   * Modificar classe **Customer** adicionando referências ao **Hibernate Panache**:
@@ -578,52 +566,53 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   import javax.persistence.Entity;
   import java.util.List;
 
+  @Entity
   public class Customer extends PanacheEntity {
 
-    public String primeiroNome;
-    public Integer rg;
-    public String sobreNome;
+      public String primeiroNome;
+      public Integer rg;
+      public String sobreNome;
 
-    public static List<Customer> findByPrimeiroNome(Customer customer){
-        List<Customer> customerList = list("primeiroNome",  customer.getPrimeiroNome());
-        return customerList;
-    }
+      public static List<Customer> findByPrimeiroNome(Customer customer){
+          List<Customer> customerList = list("primeiroNome",  customer.getPrimeiroNome());
+          return customerList;
+      }
 
-    public static List<Customer> findByPrimeiroOrSobreNome(Customer customer){
-        List<Customer> customerList = list("primeiroNome = :firstName or sobreNome = :lastName",
-                Parameters.with("firstName", customer.getPrimeiroNome())
-                        .and("lastName", customer.getSobreNome()));
-        return customerList;
-    }
+      public static List<Customer> findByPrimeiroOrSobreNome(Customer customer){
+          List<Customer> customerList = list("primeiroNome = :firstName or sobreNome = :lastName",
+                  Parameters.with("firstName", customer.getPrimeiroNome())
+                          .and("lastName", customer.getSobreNome()));
+          return customerList;
+      }
 
-    public static Customer findByRg(Customer customer){
-        customer = Customer.find("rg", customer.getRg()).firstResult();
-        return customer;
-    }
+      public static Customer findByRg(Customer customer){
+          customer = Customer.find("rg", customer.getRg()).firstResult();
+          return customer;
+      }
 
-    public String getPrimeiroNome() {
-        return primeiroNome;
-    }
+      public String getPrimeiroNome() {
+          return primeiroNome;
+      }
 
-    public void setPrimeiroNome(String primeiroNome) {
-        this.primeiroNome = primeiroNome.toUpperCase();
-    }
+      public void setPrimeiroNome(String primeiroNome) {
+          this.primeiroNome = primeiroNome.toUpperCase();
+      }
 
-    public Integer getRg() {
-        return rg;
-    }
+      public Integer getRg() {
+          return rg;
+      }
 
-    public void setRg(Integer rg) {
-        this.rg = rg;
-    }
+      public void setRg(Integer rg) {
+          this.rg = rg;
+      }
 
-    public String getSobreNome() {
-        return sobreNome;
-    }
+      public String getSobreNome() {
+          return sobreNome;
+      }
 
-    public void setSobreNome(String sobreNome) {
-        this.sobreNome = sobreNome.toUpperCase();
-    }
+      public void setSobreNome(String sobreNome) {
+          this.sobreNome = sobreNome.toUpperCase();
+      }
   }
   ```
 
@@ -1158,45 +1147,19 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
     http :8080/customers
     ```
 
-### 10 - Inclusão Monitoramento - MicroProfile Metrics <a name="workshop-quarkus-metrics">
+### 10 - Inclusão Monitoramento - Micrometer Metrics <a name="workshop-quarkus-metrics">
 
-  * Maiores detalhes em na documentação [Quarkus MicroProfile Metrics](https://quarkus.io/guides/microprofile-metrics)
-
-  * Incluir *extension SmallRye Metrics*:
+  * Maiores detalhes em na documentação [Quarkus Micrometer Metrics](https://quarkus.io/guides/micrometer)
 
   ```
   <dependency>
-    <groupId>io.quarkus</groupId>
-    <artifactId>quarkus-smallrye-metrics</artifactId>
+    <groupId>org.eclipse.microprofile.metrics</groupId>
+    <artifactId>microprofile-metrics-api</artifactId>
   </dependency>
-  ```
-
-  * Ajustar configuração do *Prometheus* com os seguintes atributos:
-
-  ```
-  global:
-  scrape_interval: 10s
-  evaluation_interval: 10s
-
-  rule_files:
-
-  scrape_configs:
-    - job_name: 'prometheus'
-      static_configs:
-        - targets: ['localhost:9090']
-
-    - job_name: 'quarkus'
-      static_configs:
-        - targets: ['localhost:8080']
-
-    - job_name: 'quarkus2'
-      static_configs:
-        - targets: ['localhost:8180']
-
-  ./prometheus --config.file=prometheus-fsquarkus.yml
-
-  http://localhost:8080/metrics
-  http://localhost:9090/graph
+  <dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+  </dependency>
   ```
 
   * Modificar a classe **CustomerResource** adicionando os seguintes métodos:
@@ -1325,8 +1288,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 
   ```
   application_br_com_redhat_quarkus_CustomerResource_QUARKUS_QUANTIDADE_CLIENTES
-  http://localhost:8080/metrics
-  http://localhost:9090/
+  http://localhost:8080/q/metrics
   ```
 
 ### 11 - Implementar Tolerância Falha - MicroProfile Fault Tolerance <a name="workshop-quarkus-fault">
@@ -1479,16 +1441,6 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Modificar a classe **CustomerResource** adicionando os seguintes métodos:
 
     ```
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    //@Retry(maxRetries = quantidadeRetry, delay = 1, delayUnit = ChronoUnit.SECONDS)
-    //@Fallback(fallbackMethod = "fallbackCustomers")
-    public List<Customer> listCustomer(){
-        if (isTestingFault){
-            executeFault();
-        }
-        return customerService.listCustomer();
-    }
 
     private void executeFault(){
        if (isRetry){
@@ -1538,7 +1490,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
     * Faça uma chamada ao método **listCustomer()**
 
       ```
-      http :8080/customers  
+      http :8080/customers
       ```
 
     * Verifique que algumas exceções são lançadas porém é obtido um retorno após execução bem sucedida:
@@ -1753,6 +1705,11 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Tente remover qualquer *customer* recém criado. Um erro *403* é esperado:
 
     ```
+    http POST :8080/customers rg=11111 primeiroNome=nome1 sobreNome=sobrenome1 "Authorization: Bearer "$access_token;
+    http POST :8080/customers rg=22222 primeiroNome=nome2 sobreNome=sobrenome2 "Authorization: Bearer "$access_token;
+    http POST :8080/customers rg=33333 primeiroNome=nome3 sobreNome=sobrenome3 "Authorization: Bearer "$access_token;
+    http POST :8080/customers rg=44444 primeiroNome=nome4 sobreNome=sobrenome4 "Authorization: Bearer "$access_token
+
     http DELETE :8080/customers/rg/33333 "Authorization: Bearer "$access_token
 
     HTTP/1.1 403 Forbidden
