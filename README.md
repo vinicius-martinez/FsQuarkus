@@ -5,7 +5,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 ## Pré Requisitos
 
 - [JDK/Open JDK 11](https://openjdk.java.net/install/)
-- [Apache Maven](https://maven.apache.org/download.cgi)
+- [Apache Maven 3.8.1+](https://maven.apache.org/download.cgi)
 - [GraalVM](https://www.graalvm.org/docs/release-notes/19_3/)
 - [HTTPie](https://httpie.org/)
 - [Prometheus](https://prometheus.io/)
@@ -58,10 +58,10 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   2021-02-04 09:23:58,647 INFO  [io.quarkus] (Quarkus Main Thread) Profile dev activated. Live Coding activated.
   2021-02-04 09:23:58,648 INFO  [io.quarkus] (Quarkus Main Thread) Installed features: [cdi, resteasy]
 
-  http :8080/hello-resteasy
+  http :8080/hello
   HTTP/1.1 200 OK
-  Content-Length: 14
   Content-Type: text/plain;charset=UTF-8
+  content-length: 14
 
   Hello RESTEasy
   ```
@@ -71,26 +71,23 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   * Geração de Pacote:
 
   ```
-  /mvnw package -DskipTests`
+  ./mvnw package -DskipTest
   ```
 
   * Certifique-se que a aplicação foi compilada com sucesso, e após esse processo, inicialize a mesma:
 
   ```
-  ls target
-  classes                                     generated-sources                           maven-status
-  code-with-quarkus-1.0.0-SNAPSHOT-runner.jar generated-test-sources                      quarkus
-  code-with-quarkus-1.0.0-SNAPSHOT.jar        lib                                         test-classes
-  code-with-quarkus-dev.jar                   maven-archiver
+  classes                              generated-test-sources               quarkus                              test-classes
+  code-with-quarkus-1.0.0-SNAPSHOT.jar maven-archiver                       quarkus-app
+  generated-sources                    maven-status                         quarkus-artifact.properties
   ```
 
   * Verifique o tamanho do arquivo jar gerado, quantidade de memória utilizada e tempo de bootstrap:
 
   ```
-  du -sh ./target/*runner.jar  ./target/lib
-  ps -o pid,rss,command -p <pid>
+  du -sh ./target/quarkus-app
   ```
-    * arquivo *"-runner.jar"* consiste no *jar* executável. Necessária a presença do diretório */lib*. Maiores detalhes nesse [LINK](https://quarkus.io/guides/getting-started#packaging-and-run-the-application)
+    * arquivo *quarkus-run.jar* consiste no *jar* executável. Necessária a presença do diretório */lib*. Maiores detalhes nesse [LINK](https://quarkus.io/guides/getting-started#packaging-and-run-the-application)
     * caso necessite criar um *uber-jar*, basta adicionar as seguintes properties no arquivo *application.properties*. Maiores detalhes nesses links: [MAVEN](https://quarkus.io/guides/maven-tooling#uber-jar-maven) [GRADLE](https://quarkus.io/guides/gradle-tooling#building-uber-jars)
 
 
@@ -109,8 +106,8 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 
   ```
   ./mvnw package -Pnative -DskipTests
-  file <file>
-  ./target/<file>
+  file target/code-with-quarkus-1.0.0-SNAPSHOT-runner
+  ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
   docker build -f src/main/docker/Dockerfile.native -t getting-started-native .
   docker images | grep getting-started
   ```
@@ -119,6 +116,8 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
 
   ```
   ./mvnw package -Pnative -Dquarkus.native.container-build=true -DskipTests
+  file target/code-with-quarkus-1.0.0-SNAPSHOT-runner
+  ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
   docker build -f src/main/docker/Dockerfile.native -t getting-started-native-linux .
   docker images | grep getting-started
   ```
@@ -144,6 +143,12 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   ab -n 50000 -c 10 http://localhost:8280/hello
   ```
 
+* Pare todos os containers:
+
+  ```
+  docker kill $(docker ps -q)
+  ```
+
 ### 4 - Restfull WebServices <a name="workshop-quarkus-restfull">
 
   * Criação possível através do [Quarkus Initializer](https://code.quarkus.io/)
@@ -161,6 +166,7 @@ Neste repositório estarão disponíveis nosso *Workshop* de implementação faz
   ```
   ./mvnw quarkus:dev
   ```
+  
     * maiores detalhem em [Development Mode](https://quarkus.io/guides/getting-started#development-mode)
 
   * Executar o teste no *Endpoint*:
